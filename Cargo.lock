@@ -14,6 +14,11 @@ version = "0.1.0"
 source = "git+https://github.com/gjf2a/bare_metal_map#91c0d594fa0d70c51ca2aa769302ee79f23e45a9"
 
 [[package]]
+name = "bare_metal_queue"
+version = "0.2.1"
+source = "git+https://github.com/gjf2a/bare_metal_queue#1bb258ebd3bf25e688ec10eafeeffdf421992bed"
+
+[[package]]
 name = "bit_field"
 version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -57,9 +62,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "filesystem"
+version = "0.1.0"
+source = "git+https://github.com/connorescajeda/filesystem---project-9#9157d9f99f8b50e892677da182b96bc57bc56e79"
+dependencies = [
+ "ramdisk",
+]
+
+[[package]]
 name = "gc_headers"
 version = "0.1.0"
-source = "git+https://github.com/gjf2a/gc_headers#1296d0740e5826d98f08f410efd012c10d07b97d"
+source = "git+https://github.com/gjf2a/gc_headers#faf1ce8c11a0f6693f539bae15d75cd7a36a3c5e"
 
 [[package]]
 name = "lazy_static"
@@ -141,9 +154,9 @@ checksum = "5c6f2d937e3b8d63449b01401e2bae4041bc9dd1129c2e3e0d239407cf6635ac"
 
 [[package]]
 name = "pic8259"
-version = "0.10.3"
+version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "761e92187c0fc0c3db574a512609df5fd99b0ee237132858281d68a0cdc189c8"
+checksum = "cb844b5b01db1e0b17938685738f113bfc903846f18932b378bc0eabfa40e194"
 dependencies = [
  "x86_64",
 ]
@@ -178,9 +191,10 @@ checksum = "4f3208ce4d8448b3f3e7d168a73f5e0c43a61e32930de3bceeccedb388b6bf06"
 [[package]]
 name = "simple_interp"
 version = "0.1.0"
-source = "git+https://github.com/gjf2a/simple_interp#dd374f7330fa62ebe98845bb59cfc55846e7d1f9"
+source = "git+https://github.com/gjf2a/simple_interp#ec487091e59e5dd356d1bce96aec88e439f0e4df"
 dependencies = [
  "bare_metal_map",
+ "bare_metal_queue",
  "gc_headers",
 ]
 
@@ -196,6 +210,7 @@ version = "0.1.0"
 dependencies = [
  "bootloader",
  "crossbeam",
+ "filesystem",
  "lazy_static",
  "num",
  "pc-keyboard",

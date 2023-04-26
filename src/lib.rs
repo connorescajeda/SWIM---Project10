@@ -1,6 +1,7 @@
 #![no_std]
 #![feature(prelude_2024)]
 
+use filesystem::FileSystem;
 // use file_system_solution::{FileSystem, FileSystemResult};
 use pc_keyboard::{DecodedKey, KeyCode};
 use pluggable_interrupt_os::vga_buffer::{BUFFER_WIDTH, BUFFER_HEIGHT, plot, ColorCode, Color, plot_str, is_drawable, plot_num};
@@ -52,6 +53,11 @@ const MAX_HEAP_BLOCKS: usize = HEAP_SIZE;
 
 
 pub struct Kernel {
+    screen : [[char; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    process_info : [[char; TASK_MANAGER_WIDTH]; BUFFER_HEIGHT],
+    file_entry : [char; BUFFER_WIDTH],
+    active : usize,
+    files: FileSystem<MAX_OPEN, BLOCK_SIZE, NUM_BLOCKS, MAX_FILE_BLOCKS, MAX_FILE_BYTES, MAX_FILES_STORED, MAX_FILENAME_BYTES>,
     // YOUR CODE HERE
 }
 
@@ -100,8 +106,8 @@ while (i < terms) {
 }
 print((4 * sum))"#;
 
-/*
-// Seed the disk with some programs.
+
+
 fn initial_files(disk: &mut FileSystem<MAX_OPEN, BLOCK_SIZE, NUM_BLOCKS, MAX_FILE_BLOCKS, MAX_FILE_BYTES, MAX_FILES_STORED, MAX_FILENAME_BYTES>) {
     for (filename, contents) in [
         ("hello", HELLO),
@@ -111,16 +117,98 @@ fn initial_files(disk: &mut FileSystem<MAX_OPEN, BLOCK_SIZE, NUM_BLOCKS, MAX_FIL
         ("average", AVERAGE),
         ("pi", PI),
     ] {
+        disk.list_directory();
         let fd = disk.open_create(filename).unwrap();
         disk.write(fd, contents.as_bytes()).unwrap();
         disk.close(fd);
     }
 }
-*/
+
+pub fn split_screen (mut screen : [[char; BUFFER_WIDTH]; BUFFER_HEIGHT]) -> [[char; BUFFER_WIDTH]; BUFFER_HEIGHT] {
+    let mut input = [' '; BUFFER_WIDTH];
+        for (i,c) in FILENAME_PROMPT.chars().enumerate(){
+            input[i] = c;
+        }
+    for (i, c) in input.iter().enumerate() {
+        screen[0][i] = *c;
+    }
+
+    //F1 header
+    screen[FIRST_BORDER_ROW][WINDOW_WIDTH / 2] = 'F';
+    screen[FIRST_BORDER_ROW][WINDOW_WIDTH / 2 + 1] = '1';
+    //F2 header
+    screen[FIRST_BORDER_ROW][WINDOW_WIDTH + (WINDOW_WIDTH / 2)] = 'F';
+    screen[FIRST_BORDER_ROW][WINDOW_WIDTH + (WINDOW_WIDTH / 2) + 1] = '2';
+    //F3 header
+    screen[MID_HEIGHT][WINDOW_WIDTH / 2] = 'F';
+    screen[MID_HEIGHT][WINDOW_WIDTH / 2 + 1] = '3';
+    //F4 header
+    screen[MID_HEIGHT][WINDOW_WIDTH + (WINDOW_WIDTH / 2)] = 'F';
+    screen[MID_HEIGHT][WINDOW_WIDTH + (WINDOW_WIDTH / 2) + 1] = '4';
+
+    screen = update_screen(screen, 1);
+
+    return screen
+    
+
+}
+
+pub fn update_screen(mut screen: [[char; BUFFER_WIDTH]; BUFFER_HEIGHT], num: usize) -> [[char; BUFFER_WIDTH]; BUFFER_HEIGHT] {
+
+    for i in 0..BUFFER_HEIGHT {
+        for j in 0..BUFFER_WIDTH{
+            if (i == FIRST_BORDER_ROW || i == MID_HEIGHT || i == LAST_BORDER_ROW) && j <= WINDOWS_WIDTH && !screen[i][j].is_alphanumeric() { //top,middle,bottom row
+                screen[i][j] = '.';
+
+            } else if (j == 0 || j == MID_WIDTH || j == WINDOWS_WIDTH) && i > 0  && !screen[i][j].is_alphanumeric(){ //left, middle, right sides
+                screen[i][j] = '.';
+            }
+        }
+    }
+
+    for i in 0..BUFFER_HEIGHT {
+        for j in 0..BUFFER_WIDTH {
+            if num == 1{
+                if (i == FIRST_BORDER_ROW || i == MID_HEIGHT) && j <= MID_WIDTH && screen[i][j] == '.' {
+                    screen[i][j] = '*'
+                } else if (j == 0 || j == MID_WIDTH) && i <  MID_HEIGHT  && screen[i][j] == '.' {
+                    screen[i][j] = '*'
+                }
+            }else if num == 2{
+                if (i == FIRST_BORDER_ROW || i == MID_HEIGHT) && j >= MID_WIDTH && screen[i][j] == '.' {
+                    screen[i][j] = '*'
+                } else if (j == MID_WIDTH || j == WINDOWS_WIDTH) && i < MID_HEIGHT  && screen[i][j] == '.' {
+                    screen[i][j] = '*'
+                }
+            } else if num == 3{
+                if (i == MID_HEIGHT || i == LAST_BORDER_ROW) && j <= MID_WIDTH && screen[i][j] == '.' {
+                    screen[i][j] = '*'
+                } else if (j == 0 || j == MID_WIDTH) && i >= MID_HEIGHT  && screen[i][j] == '.' {
+                    screen[i][j] = '*'
+                }
+            } else if num == 4{
+                if (i == MID_HEIGHT || i == LAST_BORDER_ROW) && j >= MID_WIDTH && screen[i][j] == '.' {
+                    screen[i][j] = '*'
+                } else if (j == MID_WIDTH || j == WINDOWS_WIDTH) && i >= MID_HEIGHT  && screen[i][j] == '.' {
+                    screen[i][j] = '*'
+                }
+            }
+        }
+    }
+    return screen
+}
 
 impl Kernel {
     pub fn new() -> Self {
-        todo!("Create your kernel object");
+        let mut screen = [[' '; BUFFER_WIDTH]; BUFFER_HEIGHT];
+        let mut files: FileSystem<MAX_OPEN, BLOCK_SIZE, NUM_BLOCKS, MAX_FILE_BLOCKS, MAX_FILE_BYTES, MAX_FILES_STORED, MAX_FILENAME_BYTES> = filesystem::FileSystem::new(RamDisk::new());
+        initial_files(&mut files);  
+        let process_info= [['+'; TASK_MANAGER_WIDTH]; BUFFER_HEIGHT];
+        let file_entry= ['-'; BUFFER_WIDTH];
+        let mut active = 1;
+        screen = split_screen(screen);
+        Self{screen, process_info, file_entry, active, files}
+        //todo!("Create your kernel object");
     }
 
     pub fn key(&mut self, key: DecodedKey) {
@@ -130,9 +218,39 @@ impl Kernel {
         }
         self.draw();
     }
+    fn update_active(&mut self, num: usize) {
+        if self.active != num {
+            self.active = num;
+            self.screen = update_screen(self.screen, num)
+        }
+        
+        
+    }
+    pub fn get_filenames(&mut self) {
+        let directory = self.files.list_directory();
+
+    }
 
     fn handle_raw(&mut self, key: KeyCode) {
-        todo!("handle unprintable keys");
+        match key{
+            KeyCode::F1=> {
+                self.update_active(1)
+            }
+            KeyCode::F2=> {
+                self.update_active(2)
+            }
+            KeyCode::F3=> {
+                self.update_active(3)
+            }
+            KeyCode::F4=> {
+                self.update_active(4)
+            }
+            KeyCode::F5=> {
+                self.update_active(5);
+            }
+
+            _ => ()
+        }
     }
 
     fn handle_unicode(&mut self, key: char) {
@@ -140,11 +258,16 @@ impl Kernel {
     }
 
     pub fn draw(&mut self) {
-        todo!("Draw the kernel");
+        //print!(self.screen);
+        for i in 0..BUFFER_HEIGHT{
+            for j in 0..BUFFER_WIDTH{
+                plot(self.screen[i][j], j, i, ColorCode::new(Color::White, Color::Black));
+            }
+        }
     }
 
     pub fn draw_proc_status(&mut self) {
-        todo!("Draw processor status");
+        //todo!("Draw processor status");
     }
 
     pub fn run_one_instruction(&mut self) {
