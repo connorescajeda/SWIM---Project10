@@ -128,9 +128,13 @@ fn initial_files(disk: &mut FileSystem<MAX_OPEN, BLOCK_SIZE, NUM_BLOCKS, MAX_FIL
         ("average", AVERAGE),
         ("pi", PI),
     ] {
+        if count == 1 {
+            disk.get_file_content_buffer();
+        }
         let fd = disk.open_create(filename).unwrap();
         disk.write(fd, contents.as_bytes()).unwrap();
         disk.close(fd);
+        
         
         count += 1
     }
@@ -381,7 +385,7 @@ impl Kernel {
             if self.active == 1{
                 let mut buffer = [0; MAX_FILENAME_BYTES];
                 for (i,c) in self.q1_buffer.iter().enumerate() {
-                    if i == 10 {
+                    if i == MAX_FILENAME_BYTES {
                         break;
                     }
                     buffer[i] = *c as u8;
@@ -393,6 +397,7 @@ impl Kernel {
                 let mut file = ['\0' ; 10000];
                 let mut buffer = [0;10];
                 println!("{:?}", self.files.get_open());
+                panic!();
                 loop{
                     let num_bytes = self.files.read(fd, &mut buffer).unwrap();
                     let s = core::str::from_utf8(&buffer[0..num_bytes]).unwrap();
