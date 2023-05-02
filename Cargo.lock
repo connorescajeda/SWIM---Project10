@@ -64,7 +64,7 @@ dependencies = [
 [[package]]
 name = "filesystem"
 version = "0.1.0"
-source = "git+https://github.com/connorescajeda/filesystem---project-9#467607d9b014fadb1a5360aaf9a175f44013a804"
+source = "git+https://github.com/connorescajeda/filesystem---project-9#2adf83c68646fd12c1656f2782dbeb065137ca4f"
 dependencies = [
  "ramdisk",
 ]
@@ -73,6 +73,15 @@ dependencies = [
 name = "gc_headers"
 version = "0.1.0"
 source = "git+https://github.com/gjf2a/gc_headers#faf1ce8c11a0f6693f539bae15d75cd7a36a3c5e"
+
+[[package]]
+name = "gc_heap"
+version = "0.1.0"
+source = "git+https://github.com/connorescajeda/gc_heap_template#f6166d7b4fe633ba86e9904c7e408ea6bf25c0df"
+dependencies = [
+ "bare_metal_queue",
+ "gc_headers",
+]
 
 [[package]]
 name = "lazy_static"
@@ -211,6 +220,7 @@ dependencies = [
  "bootloader",
  "crossbeam",
  "filesystem",
+ "gc_heap",
  "lazy_static",
  "num",
  "pc-keyboard",

@@ -17,7 +17,7 @@ pluggable_interrupt_os = "0.4"
 ramdisk = {git = "https://github.com/gjf2a/ramdisk"}
 filesystem = {git = "https://github.com/connorescajeda/filesystem---project-9"}
 simple_interp = {git = "https://github.com/gjf2a/simple_interp"}
-#my_heap_repo = {git = "https://github.com/my_userid/my_heap_repo"}
+gc_heap = {git = "https://github.com/connorescajeda/gc_heap_template"}
 
 [dependencies.num]
 version = "0.4"
