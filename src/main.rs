@@ -32,7 +32,7 @@ fn cpu_loop() -> ! {
         let current_tick = TICKS.load();
         if current_tick > last_tick {
             last_tick = current_tick;
-            //kernel.draw_proc_status();
+            kernel.draw_proc_status();
         }
         kernel.run_one_instruction();
     }
