@@ -76,14 +76,14 @@ pub struct Kernel {
     input: [char; 20],
     input_offset: usize,
     input_flag : bool,
-    q1_run: bool,
+    q1_run: (bool, bool),
     q1_int : Interpreter<MAX_TOKENS, MAX_LITERAL_CHARS, STACK_DEPTH, MAX_LOCAL_VARS, WINDOW_WIDTH, CopyingHeap<HEAP_SIZE, MAX_HEAP_BLOCKS>>,
-    q2_run: bool,
+    q2_run: (bool, bool),
     q2_int : Interpreter<MAX_TOKENS, MAX_LITERAL_CHARS, STACK_DEPTH, MAX_LOCAL_VARS, WINDOW_WIDTH, CopyingHeap<HEAP_SIZE, MAX_HEAP_BLOCKS>>,
-    q3_run: bool,
+    q3_run: (bool, bool),
     q3_int : Interpreter<MAX_TOKENS, MAX_LITERAL_CHARS, STACK_DEPTH, MAX_LOCAL_VARS, WINDOW_WIDTH, CopyingHeap<HEAP_SIZE, MAX_HEAP_BLOCKS>>,
-    q4_run: bool,
-    //q4_int : Interpreter<MAX_TOKENS, MAX_LITERAL_CHARS, STACK_DEPTH, MAX_LOCAL_VARS, WINDOW_WIDTH, CopyingHeap<HEAP_SIZE, MAX_HEAP_BLOCKS>>,
+    q4_run: (bool, bool),
+    q4_int : Interpreter<MAX_TOKENS, MAX_LITERAL_CHARS, STACK_DEPTH, MAX_LOCAL_VARS, WINDOW_WIDTH, CopyingHeap<HEAP_SIZE, MAX_HEAP_BLOCKS>>,
     // YOUR CODE HERE
 }
 
@@ -234,35 +234,34 @@ impl Kernel {
         let mut screen = [[' '; BUFFER_WIDTH]; BUFFER_HEIGHT];
         let mut files: FileSystem<MAX_OPEN, BLOCK_SIZE, NUM_BLOCKS, MAX_FILE_BLOCKS, MAX_FILE_BYTES, MAX_FILES_STORED, MAX_FILENAME_BYTES> = filesystem::FileSystem::new(RamDisk::new()); 
         let process_info= [['+'; TASK_MANAGER_WIDTH]; BUFFER_HEIGHT];
-        let mut active = 1;
-        let mut file_count = 0;
+        let active = 1;
+        let file_count = 0;
         initial_files(&mut files);
         screen = split_screen(screen);
         let file_entry = screen[0];
-        let mut def_buffer = [' '; MAX_FILENAME_BYTES + 1];
-        let mut q1_buffer = [' '; MAX_FILENAME_BYTES + 1];
-        let mut q2_buffer = [' '; MAX_FILENAME_BYTES + 1];
-        let mut q3_buffer = [' '; MAX_FILENAME_BYTES + 1];
-        let mut q4_buffer = [' '; MAX_FILENAME_BYTES + 1];
-        let mut buffer_offset = 0;
-        let mut editing = false;
-        let mut new_line = false;
-        let mut running = false;
-        let mut waiting = false;
-        let mut input = ['\0'; 20];
-        let mut input_offset = 0;
-        let mut input_flag = false;
-        let mut q1_run = false;
-        let mut q1_int = Interpreter::new("");
-        let mut q2_run = false;
+        let def_buffer = [' '; MAX_FILENAME_BYTES + 1];
+        let q1_buffer = [' '; MAX_FILENAME_BYTES + 1];
+        let q2_buffer = [' '; MAX_FILENAME_BYTES + 1];
+        let q3_buffer = [' '; MAX_FILENAME_BYTES + 1];
+        let q4_buffer = [' '; MAX_FILENAME_BYTES + 1];
+        let buffer_offset = 0;
+        let editing = false;
+        let new_line = false;
+        let running = false;
+        let waiting = false;
+        let input = ['\0'; 20];
+        let input_offset = 0;
+        let input_flag = false;
+        let q1_run = (false, false);
+        let q1_int = Interpreter::new("");
+        let q2_run = (false, false);
         let q2_int = Interpreter::new("");
+        let q3_run = (false, false);
+        let q3_int = Interpreter::new("");
+        let q4_run = (false, false);
+        let mut q4_int = Interpreter::new("");
 
-        let mut q3_run = false;
-        let mut q3_int = Interpreter::new("");
-        let mut q4_run = false;
-        //let mut q4_int = Interpreter::new("");
-
-        Self{screen, process_info, file_entry, active, files, file_count, q1_buffer ,q2_buffer,q3_buffer,q4_buffer, buffer_offset,def_buffer, editing, new_line, running, waiting, input, input_offset, q1_run, q1_int, input_flag, q2_run, q2_int, q3_run, q3_int, q4_run} //,q4_int}
+        Self{screen, process_info, file_entry, active, files, file_count, q1_buffer ,q2_buffer,q3_buffer,q4_buffer, buffer_offset,def_buffer, editing, new_line, running, waiting, input, input_offset, q1_run, q1_int, input_flag, q2_run, q2_int, q3_run, q3_int, q4_run ,q4_int}
         //todo!("Create your kernel object");
     }
 
@@ -367,10 +366,42 @@ impl Kernel {
                     self.files.write(fd, &buffer);
                     self.files.close(fd);
                 } else if self.active == 1 {
+                    self.q1_run = (false, false);
+                    self.waiting_check();    
+                    self.input = ['\0' ; 20];
+                    self.input_flag = false;
+                    self.input_offset = 0;
                     self.empty_screen();
                     self.screen = update_screen(self.screen, 1);
-                    self.add_files(true);
-                    self.q1_run = false;
+                    self.add_files(true); 
+                } else if self.active == 2 {
+                    self.q2_run = (false, false);
+                    self.waiting_check();    
+                    self.input = ['\0' ; 20];
+                    self.input_flag = false;
+                    self.input_offset = 0;
+                    self.empty_screen();
+                    self.screen = update_screen(self.screen, 2);
+                    self.add_files(true); 
+                }else if self.active == 3 {
+                    self.q3_run = (false, false);
+                    self.waiting_check();    
+                    self.input = ['\0' ; 20];
+                    self.input_flag = false;
+                    self.input_offset = 0;
+                    self.empty_screen();
+                    self.screen = update_screen(self.screen, 3);
+                    self.add_files(true); 
+                }
+                else if self.active == 4 {
+                    self.q4_run = (false, false);
+                    self.waiting_check();    
+                    self.input = ['\0' ; 20];
+                    self.input_flag = false;
+                    self.input_offset = 0;
+                    self.empty_screen();
+                    self.screen = update_screen(self.screen, 4);
+                    self.add_files(true); 
                 }
                 self.draw();
             } 
@@ -421,7 +452,7 @@ impl Kernel {
         } else if self.active == 2 {
             for i in FIRST_BORDER_ROW + 1..MID_HEIGHT {
                 for j in MID_WIDTH + 1..WINDOWS_WIDTH {
-                    buffer[i + (i * j)] = self.screen[i][j] as u8;
+                    buffer[count] = self.screen[i][j] as u8;
                     self.screen[i][j] = ' ';
                     count += 1;
                 }
@@ -429,7 +460,7 @@ impl Kernel {
         } else if self.active == 3 {
             for i in MID_HEIGHT + 1..LAST_BORDER_ROW {
                 for j in 1..MID_WIDTH {
-                    buffer[i + (i * j)] = self.screen[i][j] as u8;
+                    buffer[count] = self.screen[i][j] as u8;
                     self.screen[i][j] = ' ';
                     count += 1;
                 }
@@ -437,7 +468,7 @@ impl Kernel {
         } else if self.active == 4 {
             for i in MID_HEIGHT + 1..LAST_BORDER_ROW {
                 for j in MID_WIDTH + 1..WINDOWS_WIDTH {
-                    buffer[i + (i * j)] = self.screen[i][j] as u8;
+                    buffer[count] = self.screen[i][j] as u8;
                     self.screen[i][j] = ' ';
                     count += 1;
                 }
@@ -757,7 +788,12 @@ impl Kernel {
             if self.new_line {
                 self.new_line = false;
                 spot.0 = spot.0 + 1;
-                spot.1 = 1;
+                if self.active == 1 || self.active == 3 {
+                    spot.1 = 1;
+                } else {
+                    spot.1 = MID_WIDTH + 1;
+                }
+               
             }
 
             if key == '\u{08}' {
@@ -781,86 +817,244 @@ impl Kernel {
             
     }
 
-fn run(&mut self) {
-
-    if self.active == 1 {   
-        if !self.q1_run {
-            if !self.waiting {
-                self.empty_screen();
-            }
-            self.q1_run = true;
-            let mut buffer = [0; MAX_FILENAME_BYTES];
-            for i in 0..MAX_FILENAME_BYTES {
-                buffer[i] = self.q1_buffer[i] as u8;
-            }
-            let filename = from_utf8(&buffer).unwrap();
-            let fd = self.files.open_read(filename).unwrap();
-            let mut count = 0;
-            let mut file = [0 ; 10000];
-            let mut buffer = [0;10];
-            
-            loop{
-                let num_bytes = self.files.read(fd, &mut buffer).unwrap();
-                let s = core::str::from_utf8(&buffer[0..num_bytes]).unwrap();
-                for c in s.chars() {
-                    file[count] = c as u8;
-                    
-                    count += 1;
+    fn run(&mut self) {
+        let mut buffer = [0; MAX_FILENAME_BYTES];
+        if self.active == 1 {   
+            if !self.q1_run.0 {
+                if !self.q1_run.1 {
+                    self.empty_screen();
                 }
-                if num_bytes < buffer.len() {
-                    self.files.close(fd);
-                    break;
+                for i in 0..MAX_FILENAME_BYTES {
+                    buffer[i] = self.q1_buffer[i] as u8;
+                }
+            }  
+        } else if self.active == 2 {
+            if !self.q2_run.0 {
+                if !self.waiting {
+                    self.empty_screen();
+                }
+                for i in 0..MAX_FILENAME_BYTES {
+                    buffer[i] = self.q2_buffer[i] as u8;
                 }
             }
-            let program = core::str::from_utf8(&file[0..count]).unwrap();
-            self.q1_int = Interpreter::new(program);
-        }  
-    }
-}
-
-pub fn run_one_instruction(&mut self) {
-
-    if self.q1_run {
-        if !self.waiting {
-            let mut output = KernelOutput::new(self.active, self.screen, self.new_line);
-            if self.input_flag {
-                self.q1_int.provide_input(&self.input[0..self.input_offset]);
-                self.input_offset = 0;
-                self.input_flag = false;
-            } 
-            let result: TickResult<()> = self.q1_int.tick(&mut output);
-            let tmp = output.return_values();
-            self.screen = tmp.1;
-            self.new_line = tmp.2;
-            self.draw();
-
-            match result {
-                
-                TickResult::Ok(()) => {
-                },
-                TickResult::Finished => {
-                    let s = ['[', 'D', 'O', 'N', 'E', ']'];
-                    for c in s {
-                        self.edit(c);
-                    }
-                    self.draw();
-                    self.q1_run = false;
-                } ,
-                TickResult::AwaitInput => {
-                    self.waiting = true; 
-                },
-                TickResult::Err(e) => {
-                    println!("{:?}", e);
-                    panic!()
-                },
+        } else if self.active == 3{
+            if !self.q3_run.0 {
+                if !self.waiting {
+                    self.empty_screen();
+                }
+                for i in 0..MAX_FILENAME_BYTES {
+                    buffer[i] = self.q3_buffer[i] as u8;
+                }
+            }
+        } else if self.active == 4{
+            if !self.q4_run.0 {
+                if !self.waiting {
+                    self.empty_screen();
+                }
+                for i in 0..MAX_FILENAME_BYTES {
+                    buffer[i] = self.q4_buffer[i] as u8;
+                }
+            }
         }
-    }      
+            
+        let filename = from_utf8(&buffer).unwrap();
+        let fd = self.files.open_read(filename).unwrap();
+        let mut count = 0;
+        let mut file = [0 ; 10000];
+        let mut buffer = [0;10];
+        
+        loop{
+            let num_bytes = self.files.read(fd, &mut buffer).unwrap();
+            let s = core::str::from_utf8(&buffer[0..num_bytes]).unwrap();
+            for c in s.chars() {
+                file[count] = c as u8;
+                
+                count += 1;
+            }
+            if num_bytes < buffer.len() {
+                self.files.close(fd);
+                break;
+            }
+        }
+            let program = core::str::from_utf8(&file[0..count]).unwrap();
+            if self.active == 1 {   
+                if !self.q1_run.0 { 
+                    self.q1_int = Interpreter::new(program);
+                    self.q1_run.0 = true;
+                }  
+            } else if self.active == 2 {
+                if !self.q2_run.0 {
+                    self.q2_int = Interpreter::new(program);
+                    self.q2_run.0 = true;
+                }
+            } else if self.active == 3 {
+                if !self.q3_run.0 {
+                    self.q3_int = Interpreter::new(program);
+                    self.q3_run.0 = true;
+                }
+            } else if self.active == 4 {
+                if !self.q4_run.0 {
+                    //self.q4_int = Interpreter::new(program);
+                    self.q4_run.0 = true;
+                }
+            }
     }
-}
+
+    pub fn run_one_instruction(&mut self) {
+            if self.q1_run.0 {
+                if !self.q1_run.1 { //if screen 1 is waiting
+                    if self.input_flag {
+                        self.q1_int.provide_input(&self.input[0..self.input_offset]);
+                        self.input_offset = 0;
+                        self.input_flag = false;
+                    } 
+                    let mut output = KernelOutput::new(self.active, self.screen, self.new_line);
+                    let result: TickResult<()> = self.q1_int.tick(&mut output);
+                    let tmp = output.return_values();
+                    self.screen = tmp.1;
+                    self.new_line = tmp.2;
+                    self.draw();
+    
+                    match result {
+                        
+                        TickResult::Ok(()) => {
+                        },
+                        TickResult::Finished => {
+                            let s = ['[', 'D', 'O', 'N', 'E', ']'];
+                            for c in s {
+                                self.edit(c);
+                            }
+                            self.draw();
+                            self.q1_run = (false, false);
+                        } ,
+                        TickResult::AwaitInput => {
+                            self.waiting = true;
+                            self.q1_run.1 = true;
+                        },
+                        TickResult::Err(e) => {
+                            println!("{:?}", e);
+                            panic!()
+                        },
+                }
+            }      
+            } 
+            if self.q2_run.0 {
+                if !self.q2_run.1 { //if screen 1 is waiting
+                    if self.input_flag {
+                        self.q2_int.provide_input(&self.input[0..self.input_offset]);
+                        self.input_offset = 0;
+                        self.input_flag = false;
+                    } 
+                    let mut output = KernelOutput::new(self.active, self.screen, self.new_line);
+                    let result: TickResult<()> = self.q2_int.tick(&mut output);
+                    let tmp = output.return_values();
+                    self.screen = tmp.1;
+                    self.new_line = tmp.2;
+                    self.draw();
+    
+                    match result {
+                        
+                        TickResult::Ok(()) => {
+                        },
+                        TickResult::Finished => {
+                            let s = ['[', 'D', 'O', 'N', 'E', ']'];
+                            for c in s {
+                                self.edit(c);
+                            }
+                            self.draw();
+                            self.q2_run = (false, false);
+                        } ,
+                        TickResult::AwaitInput => {
+                            self.waiting = true;
+                            self.q2_run.1 = true;
+                        },
+                        TickResult::Err(e) => {
+                            println!("{:?}", e);
+                            panic!()
+                        },
+                    }
+                }      
+            }
+            if self.q3_run.0 {
+                if !self.q3_run.1 { //if screen 1 is waiting
+                    if self.input_flag {
+                        self.q3_int.provide_input(&self.input[0..self.input_offset]);
+                        self.input_offset = 0;
+                        self.input_flag = false;
+                    } 
+                    let mut output = KernelOutput::new(self.active, self.screen, self.new_line);
+                    let result: TickResult<()> = self.q3_int.tick(&mut output);
+                    let tmp = output.return_values();
+                    self.screen = tmp.1;
+                    self.new_line = tmp.2;
+                    self.draw();
+    
+                    match result {
+                        
+                        TickResult::Ok(()) => {
+                        },
+                        TickResult::Finished => {
+                            let s = ['[', 'D', 'O', 'N', 'E', ']'];
+                            for c in s {
+                                self.edit(c);
+                            }
+                            self.draw();
+                            self.q3_run = (false, false);
+                        } ,
+                        TickResult::AwaitInput => {
+                            self.waiting = true;
+                            self.q3_run.1 = true;
+                        },
+                        TickResult::Err(e) => {
+                            println!("{:?}", e);
+                            panic!()
+                        },
+                }
+            }      
+            }
+            if self.q4_run.0 {
+                if !self.q4_run.1 { //if screen 1 is waiting
+                    if self.input_flag {
+                        //self.q4_int.provide_input(&self.input[0..self.input_offset]);
+                        self.input_offset = 0;
+                        self.input_flag = false;
+                    } 
+                    let mut output = KernelOutput::new(self.active, self.screen, self.new_line);
+                    //let result: TickResult<()> = self.q4_int.tick(&mut output);
+                    let tmp = output.return_values();
+                    self.screen = tmp.1;
+                    self.new_line = tmp.2;
+                    self.draw();
+    
+                //     match result {
+                        
+                //         TickResult::Ok(()) => {
+                //         },
+                //         TickResult::Finished => {
+                //             let s = ['[', 'D', 'O', 'N', 'E', ']'];
+                //             for c in s {
+                //                 self.edit(c);
+                //             }
+                //             self.draw();
+                //             self.q4_run = (false, false);
+                //         } ,
+                //         TickResult::AwaitInput => {
+                //             self.waiting = true;
+                //             self.q4_run.1 = true;
+                //         },
+                //         TickResult::Err(e) => {
+                //             println!("{:?}", e);
+                //             panic!()
+                //         },
+                // }
+            }      
+        } 
+       
+    }
 
     fn handle_unicode(&mut self, key: char) {
         let mut activate = false;
-        if !self.editing && self.active != 5 && (!self.q1_run && !self.q2_run && !self.q3_run && !self.q4_run) {
+        if !self.editing && self.active != 5 && (!self.q1_run.0 && !self.q2_run.0 && !self.q3_run.0 && !self.q4_run.0) {
             if key == 'e' {
                 self.read_file_to_window();
                 activate = true;
@@ -870,7 +1064,7 @@ pub fn run_one_instruction(&mut self) {
             
         } 
 
-        if !self.q1_run || !self.q2_run || !self.q3_run || !self.q4_run {
+        if !self.q1_run.0 || !self.q2_run.0 || !self.q3_run.0 || !self.q4_run.0 {
             if key == 'r' {
                 self.run();
                 activate = true;
@@ -887,7 +1081,7 @@ pub fn run_one_instruction(&mut self) {
 
             } else if key.is_alphanumeric() && self.active == 5{
                 let start = FILENAME_PROMPT.len();
-                let mut count = 0; 
+                let mut count: usize = 0; 
                 for i in start..start+MAX_FILENAME_BYTES {
                     if count == MAX_FILENAME_BYTES {
                         break;
@@ -924,13 +1118,28 @@ pub fn run_one_instruction(&mut self) {
                 if self.waiting {
                     self.new_line = true;
                     self.input_flag = true;
-                    self.waiting = false;
+                    if self.active == 1 {
+                        self.q1_run.1 = false;
+                    } else if self.active == 2 {
+                        self.q2_run.1 = false;
+                    } else if self.active == 3 {
+                        self.q3_run.1 = false;
+                    } else if self.active == 4 {
+                        self.q4_run.1 = false;
+                    }
+                    self.waiting_check();
+                    //self.waiting = false;
                 }
                 
             } 
         }
     }
         
+    fn waiting_check(&mut self){
+        if !self.q1_run.1{   // add the rest 
+            self.waiting = false
+        }
+    }
 
     fn highlight(&mut self, dir: char){
         let directory = self.files.list_directory().unwrap();
@@ -1008,7 +1217,7 @@ pub fn run_one_instruction(&mut self) {
     fn draw_highlight(&mut self) {
         for i in 0..MAX_FILENAME_BYTES + 1{
             if self.active == 1{
-                if !self.editing && !self.q1_run {
+                if !self.editing && !self.q1_run.0 {
                     plot(self.q1_buffer[i], i + 1 + (self.buffer_offset % 3 * (MAX_FILENAME_BYTES + 1)), self.buffer_offset / 3 + 2, ColorCode::new(Color::Black, Color::White));
                 }
                 plot(self.q2_buffer[i], i + 1 + WINDOW_WIDTH + 2, 2, ColorCode::new(Color::Black, Color::White));
@@ -1016,7 +1225,7 @@ pub fn run_one_instruction(&mut self) {
                 plot(self.q4_buffer[i], i + WINDOW_WIDTH + 3, WINDOW_HEIGHT + 3, ColorCode::new(Color::Black, Color::White));
             }else if self.active == 2 {
                 plot(self.q1_buffer[i], i + 1, 2, ColorCode::new(Color::Black, Color::White));
-                if !self.editing {
+                if !self.editing && !self.q2_run.0 {
                     plot(self.q2_buffer[i], i + WINDOW_WIDTH + 3 + (self.buffer_offset % 3 * (MAX_FILENAME_BYTES + 1)),self.buffer_offset / 3 + 2, ColorCode::new(Color::Black, Color::White));
                 }
                 plot(self.q3_buffer[i], i+ 1, WINDOW_HEIGHT + 3, ColorCode::new(Color::Black, Color::White));
@@ -1024,7 +1233,7 @@ pub fn run_one_instruction(&mut self) {
             } else if self.active == 3 {
                 plot(self.q1_buffer[i], i + 1, 2, ColorCode::new(Color::Black, Color::White));
                 plot(self.q2_buffer[i], i + 1 + WINDOW_WIDTH + 2, 2, ColorCode::new(Color::Black, Color::White));
-                if !self.editing {
+                if !self.editing && !self.q3_run.0 {
                     plot(self.q3_buffer[i], i + 1 + (self.buffer_offset % 3 * (MAX_FILENAME_BYTES + 1)),self.buffer_offset / 3 + 3 + WINDOW_HEIGHT, ColorCode::new(Color::Black, Color::White));
                 }
                 plot(self.q4_buffer[i], i + WINDOW_WIDTH + 3, WINDOW_HEIGHT + 3, ColorCode::new(Color::Black, Color::White));
@@ -1032,7 +1241,7 @@ pub fn run_one_instruction(&mut self) {
                 plot(self.q1_buffer[i], i + 1, 2, ColorCode::new(Color::Black, Color::White));
                 plot(self.q2_buffer[i], i + 1 + WINDOW_WIDTH + 2, 2, ColorCode::new(Color::Black, Color::White));
                 plot(self.q3_buffer[i], i+ 1, WINDOW_HEIGHT + 3, ColorCode::new(Color::Black, Color::White));
-                if !self.editing {
+                if !self.editing && !self.q4_run.0 {
                     plot(self.q4_buffer[i], i  +WINDOW_WIDTH + 3 + (self.buffer_offset % 3 * (MAX_FILENAME_BYTES + 1)), self.buffer_offset / 3 + WINDOW_HEIGHT + 3, ColorCode::new(Color::Black, Color::White));
                 }
                
@@ -1086,12 +1295,57 @@ impl InterpreterOutput for KernelOutput{
                 }
 
             }
+        } else if self.active == 2{
+            for i in FIRST_BORDER_ROW + 1 .. MID_HEIGHT {
+                for j in MID_WIDTH + 1..WINDOWS_WIDTH{
+                    if self.screen[i][j] == ' ' && !last_char {
+                        spot = (i, j); 
+                        last_char = true;
+                    }
+                    if self.screen[i][j] != ' ' && last_char {
+                        last_char = false;
+                    }
+                }
+
+            }
+        } else if self.active == 3{
+            for i in MID_HEIGHT + 1 .. LAST_BORDER_ROW {
+                for j in 1..MID_WIDTH{
+                    if self.screen[i][j] == ' ' && !last_char {
+                        spot = (i, j); 
+                        last_char = true;
+                    }
+                    if self.screen[i][j] != ' ' && last_char {
+                        last_char = false;
+                    }
+                }
+
+            }
+        } else if self.active == 4{
+            for i in MID_HEIGHT + 1 .. LAST_BORDER_ROW {
+                for j in MID_WIDTH + 1..WINDOWS_WIDTH{
+                    if self.screen[i][j] == ' ' && !last_char {
+                        spot = (i, j); 
+                        last_char = true;
+                    }
+                    if self.screen[i][j] != ' ' && last_char {
+                        last_char = false;
+                    }
+                }
+
+            }
         }
-        
         if self.new_line {
             self.new_line = false;
             spot.0 = spot.0 + 1;
-            spot.1 = 1;
+            if self.active == 1 || self.active == 3 {
+                spot.1 = 1;
+            } else {
+                //println!("{:?}", spot);
+                //panic!();
+                spot.1 = MID_WIDTH + 1
+            }
+           
         }
         
         for char in chars {
@@ -1099,15 +1353,9 @@ impl InterpreterOutput for KernelOutput{
                 if spot.0 + 1 == MID_HEIGHT {
                     //Do something with scrolling?
                 } else  {
-                    spot = (spot.0 + 1, 1);
-                    //self.screen[spot.0 + 1][1] = ' ';
                     self.new_line = true;
                 }
             } else{
-                // if *char as char == '2' {
-                //     println!("{:?}",char);
-                //     panic!();
-                // }
                 self.screen[spot.0][spot.1] = *char as char;
                 if spot.1 + 1 == MID_WIDTH {
                     spot = (spot.0 + 1, 1)
