@@ -34,7 +34,7 @@ fn cpu_loop() -> ! {
             last_tick = current_tick;
             //kernel.draw_proc_status();
         }
-        //kernel.run_one_instruction();
+        kernel.run_one_instruction();
     }
 }
 

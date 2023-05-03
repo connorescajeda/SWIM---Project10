@@ -75,6 +75,15 @@ pub struct Kernel {
     waiting: bool,
     input: [char; 20],
     input_offset: usize,
+    input_flag : bool,
+    q1_run: bool,
+    q1_int : Interpreter<MAX_TOKENS, MAX_LITERAL_CHARS, STACK_DEPTH, MAX_LOCAL_VARS, WINDOW_WIDTH, CopyingHeap<HEAP_SIZE, MAX_HEAP_BLOCKS>>,
+    q2_run: bool,
+    q2_int : Interpreter<MAX_TOKENS, MAX_LITERAL_CHARS, STACK_DEPTH, MAX_LOCAL_VARS, WINDOW_WIDTH, CopyingHeap<HEAP_SIZE, MAX_HEAP_BLOCKS>>,
+    q3_run: bool,
+    q3_int : Interpreter<MAX_TOKENS, MAX_LITERAL_CHARS, STACK_DEPTH, MAX_LOCAL_VARS, WINDOW_WIDTH, CopyingHeap<HEAP_SIZE, MAX_HEAP_BLOCKS>>,
+    q4_run: bool,
+    //q4_int : Interpreter<MAX_TOKENS, MAX_LITERAL_CHARS, STACK_DEPTH, MAX_LOCAL_VARS, WINDOW_WIDTH, CopyingHeap<HEAP_SIZE, MAX_HEAP_BLOCKS>>,
     // YOUR CODE HERE
 }
 
@@ -242,7 +251,18 @@ impl Kernel {
         let mut waiting = false;
         let mut input = ['\0'; 20];
         let mut input_offset = 0;
-        Self{screen, process_info, file_entry, active, files, file_count, q1_buffer ,q2_buffer,q3_buffer,q4_buffer, buffer_offset,def_buffer, editing, new_line, running, waiting, input, input_offset}
+        let mut input_flag = false;
+        let mut q1_run = false;
+        let mut q1_int = Interpreter::new("");
+        let mut q2_run = false;
+        let q2_int = Interpreter::new("");
+
+        let mut q3_run = false;
+        let mut q3_int = Interpreter::new("");
+        let mut q4_run = false;
+        //let mut q4_int = Interpreter::new("");
+
+        Self{screen, process_info, file_entry, active, files, file_count, q1_buffer ,q2_buffer,q3_buffer,q4_buffer, buffer_offset,def_buffer, editing, new_line, running, waiting, input, input_offset, q1_run, q1_int, input_flag, q2_run, q2_int, q3_run, q3_int, q4_run} //,q4_int}
         //todo!("Create your kernel object");
     }
 
@@ -333,6 +353,7 @@ impl Kernel {
                 self.update_active(5);
             } 
             KeyCode::F6=> {
+                self.buffer_offset = 0;
                 if self.editing {
                     let buffer = self.empty_screen();
                     let name_buff = self.clear_editing();
@@ -345,7 +366,13 @@ impl Kernel {
                     let fd = self.files.open_create(filename).unwrap();
                     self.files.write(fd, &buffer);
                     self.files.close(fd);
+                } else if self.active == 1 {
+                    self.empty_screen();
+                    self.screen = update_screen(self.screen, 1);
+                    self.add_files(true);
+                    self.q1_run = false;
                 }
+                self.draw();
             } 
             KeyCode::ArrowRight => {
                 self.highlight('r');
@@ -754,128 +781,157 @@ impl Kernel {
             
     }
 
-fn run(&mut self, key: char, input: bool  ) {
-    self.running = true;
-    if !self.waiting {
-        self.empty_screen();
-    }
+fn run(&mut self) {
+
     if self.active == 1 {   
-        let mut buffer = [0; MAX_FILENAME_BYTES];
-        for i in 0..MAX_FILENAME_BYTES {
-            buffer[i] = self.q1_buffer[i] as u8;
-        }
-        let filename = from_utf8(&buffer).unwrap();
-        let fd = self.files.open_read(filename).unwrap();
-        let mut count = 0;
-        let mut file = [0 ; 10000];
-        let mut buffer = [0;10];
-        
-        loop{
-            let num_bytes = self.files.read(fd, &mut buffer).unwrap();
-            let s = core::str::from_utf8(&buffer[0..num_bytes]).unwrap();
-            for c in s.chars() {
-                file[count] = c as u8;
-                
-                count += 1;
-            }
-            if num_bytes < buffer.len() {
-                self.files.close(fd);
-                break;
-            }
-        }
-        let program = core::str::from_utf8(&file[0..count]).unwrap();
-        let mut int : Interpreter<MAX_TOKENS, MAX_LITERAL_CHARS, STACK_DEPTH, MAX_LOCAL_VARS, WINDOW_WIDTH, CopyingHeap<HEAP_SIZE, MAX_HEAP_BLOCKS>> = Interpreter::new(program);
-        loop {
+        if !self.q1_run {
             if !self.waiting {
-                let result: TickResult<()> = int.tick(self);
-                match result {
-                    TickResult::Ok(()) => {
-                    },
-                    TickResult::Finished => {
-                        break;
-                    } ,
-                    TickResult::AwaitInput => {
-                        if input {
-                            int.provide_input(&self.input);
-                        } else{
-                            self.waiting = true;
-                        }
-                        break;
-
-                    },
-                    TickResult::Err(e) => {
-                        println!("{:?}", e);
-                        panic!()
-                    },
-                }
-            } else{
-                self.edit(key);
-                self.input[self.input_offset] = key;
-                self.input_offset += 1;
-                break;
+                self.empty_screen();
             }
+            self.q1_run = true;
+            let mut buffer = [0; MAX_FILENAME_BYTES];
+            for i in 0..MAX_FILENAME_BYTES {
+                buffer[i] = self.q1_buffer[i] as u8;
+            }
+            let filename = from_utf8(&buffer).unwrap();
+            let fd = self.files.open_read(filename).unwrap();
+            let mut count = 0;
+            let mut file = [0 ; 10000];
+            let mut buffer = [0;10];
             
-        }
-        
+            loop{
+                let num_bytes = self.files.read(fd, &mut buffer).unwrap();
+                let s = core::str::from_utf8(&buffer[0..num_bytes]).unwrap();
+                for c in s.chars() {
+                    file[count] = c as u8;
+                    
+                    count += 1;
+                }
+                if num_bytes < buffer.len() {
+                    self.files.close(fd);
+                    break;
+                }
+            }
+            let program = core::str::from_utf8(&file[0..count]).unwrap();
+            self.q1_int = Interpreter::new(program);
+        }  
+    }
+}
 
-            
+pub fn run_one_instruction(&mut self) {
+
+    if self.q1_run {
+        if !self.waiting {
+            let mut output = KernelOutput::new(self.active, self.screen, self.new_line);
+            if self.input_flag {
+                self.q1_int.provide_input(&self.input[0..self.input_offset]);
+                self.input_offset = 0;
+                self.input_flag = false;
+            } 
+            let result: TickResult<()> = self.q1_int.tick(&mut output);
+            let tmp = output.return_values();
+            self.screen = tmp.1;
+            self.new_line = tmp.2;
+            self.draw();
+
+            match result {
+                
+                TickResult::Ok(()) => {
+                },
+                TickResult::Finished => {
+                    let s = ['[', 'D', 'O', 'N', 'E', ']'];
+                    for c in s {
+                        self.edit(c);
+                    }
+                    self.draw();
+                    self.q1_run = false;
+                } ,
+                TickResult::AwaitInput => {
+                    self.waiting = true; 
+                },
+                TickResult::Err(e) => {
+                    println!("{:?}", e);
+                    panic!()
+                },
+        }
+    }      
     }
 }
 
     fn handle_unicode(&mut self, key: char) {
-        if !self.editing && !self.running && self.active != 5{
+        let mut activate = false;
+        if !self.editing && self.active != 5 && (!self.q1_run && !self.q2_run && !self.q3_run && !self.q4_run) {
             if key == 'e' {
                 self.read_file_to_window();
-            } else if key == 'r' {
-                self.run(key, false);
-            }
-        } else if key.is_alphanumeric() && self.active == 5{
-            let start = FILENAME_PROMPT.len();
-            let mut count = 0; 
-            for i in start..start+MAX_FILENAME_BYTES {
-                if count == MAX_FILENAME_BYTES {
-                    break;
-                }
-                if self.screen[0][i] == ' '{
-                    self.screen[0][i] = key;
-                    break;
-                }
-                count += 1
-            }
-        } else if is_drawable(key) && self.waiting {
-            self.run(key, false);
-        }
-        else if is_drawable(key) && self.editing {
-            self.edit(key)
-        } else if key == '\u{08}'{
-            if self.active == 5 {
-                let start = FILENAME_PROMPT.len();
-                for i in start..start+MAX_FILENAME_BYTES {
-                    if self.screen[0][i] == ' '{
-                        self.screen[0][i - 1] = ' ';
-                        break;
-                    }
-                }
-            } else if self.editing{
-                self.edit(key)
-            }
-            
-        } else if key == '\n'{
-            if self.active == 5 {
-                self.create_file();
-            }
-            if self.editing {
-                self.edit(key);
-            }
-            if self.waiting {
-                self.input_offset = 0;
-                self.waiting = false;
-                self.run(key, true)
+                activate = true;
+            } else{
+                activate = false;
             }
             
         } 
-    
+
+        if !self.q1_run || !self.q2_run || !self.q3_run || !self.q4_run {
+            if key == 'r' {
+                self.run();
+                activate = true;
+            } else{
+                activate = false;
+            }
+        
+        }
+        if !activate {
+            if is_drawable(key) && self.waiting && key != '\n' {
+                self.edit(key);
+                self.input[self.input_offset] = key;
+                self.input_offset += 1;
+
+            } else if key.is_alphanumeric() && self.active == 5{
+                let start = FILENAME_PROMPT.len();
+                let mut count = 0; 
+                for i in start..start+MAX_FILENAME_BYTES {
+                    if count == MAX_FILENAME_BYTES {
+                        break;
+                    }
+                    if self.screen[0][i] == ' '{
+                        self.screen[0][i] = key;
+                        break;
+                    }
+                    count += 1
+                }
+                
+            }else if is_drawable(key) && self.editing {
+                self.edit(key)
+            } else if key == '\u{08}'{
+                if self.active == 5 {
+                    let start = FILENAME_PROMPT.len();
+                    for i in start..start+MAX_FILENAME_BYTES {
+                        if self.screen[0][i] == ' '{
+                            self.screen[0][i - 1] = ' ';
+                            break;
+                        }
+                    }
+                } else if self.editing{
+                    self.edit(key)
+                }
+                
+            } else if key == '\n'{
+                if self.active == 5 {
+                    self.create_file();
+                }
+                if self.editing {
+                    self.edit(key);
+                }
+                if self.waiting {
+                    self.new_line = true;
+                    self.input_flag = true;
+                    self.waiting = false;
+                }
+                
+            } 
+        }
     }
+        
+
     fn highlight(&mut self, dir: char){
         let directory = self.files.list_directory().unwrap();
         let file_count = directory.0;
@@ -952,7 +1008,7 @@ fn run(&mut self, key: char, input: bool  ) {
     fn draw_highlight(&mut self) {
         for i in 0..MAX_FILENAME_BYTES + 1{
             if self.active == 1{
-                if !self.editing && !self.running {
+                if !self.editing && !self.q1_run {
                     plot(self.q1_buffer[i], i + 1 + (self.buffer_offset % 3 * (MAX_FILENAME_BYTES + 1)), self.buffer_offset / 3 + 2, ColorCode::new(Color::Black, Color::White));
                 }
                 plot(self.q2_buffer[i], i + 1 + WINDOW_WIDTH + 2, 2, ColorCode::new(Color::Black, Color::White));
@@ -990,19 +1046,31 @@ fn run(&mut self, key: char, input: bool  ) {
         //todo!("Draw processor status");
     }
 
-    pub fn run_one_instruction(&mut self) {
-        todo!("Run an instruction in a process");
+    
+}
+
+pub struct  KernelOutput {
+    active : usize,
+    screen : [[char; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    new_line: bool,
+
+}
+
+impl KernelOutput{
+    fn new(active: usize, screen: [[char; BUFFER_WIDTH]; BUFFER_HEIGHT] , new_line: bool) -> Self{
+        let mut active = active;
+        let mut screen = screen;
+        let mut new_line = new_line;
+        Self{active, screen, new_line}
+    }
+
+    fn return_values(&mut self) -> (usize, [[char; BUFFER_WIDTH]; BUFFER_HEIGHT], bool){
+        (self.active, self.screen, self.new_line)
     }
 }
 
-
-
-impl InterpreterOutput for Kernel {
-    fn print(&mut self, chars: &[u8]){
-        let mut count = 0;
-        let len = chars.len();
-        let mut offset = 0;
-
+impl InterpreterOutput for KernelOutput{
+    fn print(&mut self, chars: &[u8]) {
         let mut last_char = false;
         let mut spot = (0,0);    
         if self.active == 1 {
@@ -1025,16 +1093,21 @@ impl InterpreterOutput for Kernel {
             spot.0 = spot.0 + 1;
             spot.1 = 1;
         }
+        
         for char in chars {
             if *char == ('\n' as u8) {
                 if spot.0 + 1 == MID_HEIGHT {
                     //Do something with scrolling?
                 } else  {
                     spot = (spot.0 + 1, 1);
-                    self.screen[spot.0 + 1][1] = ' ';
+                    //self.screen[spot.0 + 1][1] = ' ';
                     self.new_line = true;
                 }
             } else{
+                // if *char as char == '2' {
+                //     println!("{:?}",char);
+                //     panic!();
+                // }
                 self.screen[spot.0][spot.1] = *char as char;
                 if spot.1 + 1 == MID_WIDTH {
                     spot = (spot.0 + 1, 1)
@@ -1047,6 +1120,61 @@ impl InterpreterOutput for Kernel {
 
     }
 }
+
+
+// impl InterpreterOutput for Kernel {
+//     fn print(&mut self, chars: &[u8]){
+//         let mut count = 0;
+//         let len = chars.len();
+//         let mut offset = 0;
+
+//         let mut last_char = false;
+//         let mut spot = (0,0);    
+//         if self.active == 1 {
+//             for i in FIRST_BORDER_ROW + 1 .. MID_HEIGHT {
+//                 for j in 1..MID_WIDTH{
+//                     if self.screen[i][j] == ' ' && !last_char {
+//                         spot = (i, j); 
+//                         last_char = true;
+//                     }
+//                     if self.screen[i][j] != ' ' && last_char {
+//                         last_char = false;
+//                     }
+//                 }
+
+//             }
+//         }
+        
+//         if self.new_line {
+//             self.new_line = false;
+//             spot.0 = spot.0 + 1;
+//             spot.1 = 1;
+//         }
+//         for char in chars {
+//             if *char == ('\n' as u8) {
+//                 if spot.0 + 1 == MID_HEIGHT {
+//                     //Do something with scrolling?
+//                 } else  {
+//                     spot = (spot.0 + 1, 1);
+//                     self.screen[spot.0 + 1][1] = ' ';
+//                     self.new_line = true;
+//                 }
+//             } else{
+//                 self.screen[spot.0][spot.1] = *char as char;
+//                 if spot.1 + 1 == MID_WIDTH {
+//                     spot = (spot.0 + 1, 1)
+//                 } else {
+//                     spot = (spot.0, spot.1 + 1)
+//                 }
+
+//             }
+//         }
+
+//     }
+// }
+
+
+
 fn text_color() -> ColorCode {
     ColorCode::new(Color::White, Color::Black)
 }
